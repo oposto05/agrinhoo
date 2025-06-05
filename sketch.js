@@ -1,28 +1,25 @@
 let player;
 let items = [];
 let obstacles = [];
-let gameState = "playing"; // ou "gameOver"
+let gameState = "playing";
 let score = 0;
-let level = 1; // Fase do jogo
-let creditsY = -50; // Posição inicial do texto dos créditos
-let creditSpeed = 2; // Velocidade do movimento dos créditos
+let level = 1;
+let creditsY = -50;
+let creditSpeed = 2;
 
 function setup() {
   createCanvas(800, 600);
   player = new Player();
-  
-  // Adiciona itens e obstáculos na fase inicial
   generateLevel(level);
 }
 
 function draw() {
   background(200);
-  
+
   if (gameState === "playing") {
     player.update();
     player.display();
-    
-    // Desenha itens
+
     for (let i = items.length - 1; i >= 0; i--) {
       items[i].display();
       if (player.collectItem(items[i])) {
@@ -30,32 +27,28 @@ function draw() {
         score++;
       }
     }
-    
-    // Desenha obstáculos
+
     for (let obs of obstacles) {
       obs.display();
       if (player.collidesWith(obs)) {
-        gameState = "gameOver"; // Mudando para "gameOver" quando colide com um obstáculo
+        gameState = "gameOver";
       }
     }
-    
+
     displayScore();
-    
-    // Verifica se o jogador coletou todos os itens para avançar de fase
+
     if (items.length === 0) {
       nextLevel();
     }
   } else if (gameState === "gameOver") {
     displayGameOver();
-    
-    // Movendo os créditos para baixo
+
     if (creditsY < height) {
       creditsY += creditSpeed;
     } else {
-      creditsY = -50; // Reinicia a posição dos créditos quando eles saem da tela
+      creditsY = -50;
     }
-  
-    // Exibindo créditos em movimento
+
     displayCredits();
   }
 }
@@ -64,33 +57,32 @@ function displayScore() {
   fill(0);
   textSize(24);
   text("Score: " + score, 20, 30);
-  text("Fase: " + level, width - 150, 30); // Exibe a fase atual
+  text("Fase: " + level, width - 150, 30);
 }
 
 function displayCredits() {
-  fill(255); // Créditos em branco
+  fill(255);
   textSize(16);
   textAlign(CENTER, CENTER);
-  
-  // Mensagens de créditos em movimento
-  text("Créditos: ", width / 2, creditsY);
-  text("Jogo criado com P5.js", width / 2, creditsY + 20);
-  text("Ideia do ChatGPT", width / 2, creditsY + 40);
-  text("Canais do YouTube recomendados:", width / 2, creditsY + 60);
-  text("1. Canal A", width / 2, creditsY + 80);
-  text("2. Canal B", width / 2, creditsY + 100);
-  text("3. Canal C", width / 2, creditsY + 120);
+
+  text("Créditos: ", width / 6, creditsY);
+  text("Jogo criado com P5.js", width / 6, creditsY + 20);
+  text("Ideia do ChatGPT", width / 6, creditsY + 40);
+  text("Canais do YouTube", width / 6, creditsY + 60);
 }
 
 function displayGameOver() {
   background(0);
-  fill(255);
-  textSize(48);
   textAlign(CENTER, CENTER);
+
+  fill(255, 0, 0);
+  textSize(48);
   text("Game Over", width / 2, height / 2 - 50);
+
+  fill(0, 0, 255);
   textSize(24);
   text("Press 'R' to Restart", width / 2, height / 2 + 50);
-  
+
   if (keyIsPressed && key === 'r') {
     resetGame();
   }
@@ -103,18 +95,39 @@ function nextLevel() {
 }
 
 function generateLevel(level) {
-  // Limpa os itens e obstáculos antigos
   items = [];
   obstacles = [];
-  
-  // Gera itens baseados no nível
-  for (let i = 0; i < level * 5; i++) { // Aumenta o número de itens por nível
-    items.push(new Item(random(50, width-50), random(50, height-50)));
+
+  for (let i = 0; i < level * 3; i++) {
+    let w = 50;
+    let h = random(60, 150);
+    let x = random(50, width - w - 50);
+    let y = random(50, height - h - 50);
+    obstacles.push(new Obstacle(x, y, w, h));
   }
-  
-  // Gera obstáculos baseados no nível
-  for (let i = 0; i < level * 3; i++) { // Aumenta o número de obstáculos por nível
-    obstacles.push(new Obstacle(random(50, width-50), random(50, height-50)));
+
+  for (let i = 0; i < level * 5; i++) {
+    let valid = false;
+    let attempts = 0;
+    while (!valid && attempts < 100) {
+      let x = random(50, width - 50);
+      let y = random(50, height - 50);
+      let tooClose = false;
+
+      for (let obs of obstacles) {
+        let d = dist(x, y, obs.x + obs.w / 2, obs.y + obs.h / 2);
+        if (d < 80) {
+          tooClose = true;
+          break;
+        }
+      }
+
+      if (!tooClose) {
+        items.push(new Item(x, y));
+        valid = true;
+      }
+      attempts++;
+    }
   }
 }
 
@@ -132,36 +145,59 @@ class Player {
     this.size = 30;
     this.speed = 5;
   }
-  
+
   update() {
-    if (keyIsDown(LEFT_ARROW)) {
-      this.x -= this.speed;
-    }
-    if (keyIsDown(RIGHT_ARROW)) {
-      this.x += this.speed;
-    }
-    if (keyIsDown(UP_ARROW)) {
-      this.y -= this.speed;
-    }
-    if (keyIsDown(DOWN_ARROW)) {
-      this.y += this.speed;
-    }
+    if (keyIsDown(LEFT_ARROW)) this.x -= this.speed;
+    if (keyIsDown(RIGHT_ARROW)) this.x += this.speed;
+    if (keyIsDown(UP_ARROW)) this.y -= this.speed;
+    if (keyIsDown(DOWN_ARROW)) this.y += this.speed;
   }
-  
+
   display() {
-    fill(255, 0, 0);
+    push();
+    translate(this.x, this.y);
     noStroke();
-    ellipse(this.x, this.y, this.size, this.size);
+
+    // Cabeça
+    fill(255, 204, 153); // cor de pele
+    ellipse(0, -20, 20, 20);
+
+    // Corpo
+    fill(255, 0, 0); // vermelho
+    rectMode(CENTER);
+    rect(0, 0, 15, 25, 5);
+
+    // Braços
+    stroke(0);
+    strokeWeight(2);
+    line(-10, -5, -18, 10); // braço esquerdo
+    line(10, -5, 18, 10);   // braço direito
+
+    // Pernas
+    line(-5, 13, -5, 25);  // perna esquerda
+    line(5, 13, 5, 25);    // perna direita
+
+    // Olhos
+    noStroke();
+    fill(0);
+    ellipse(-4, -22, 3, 3);
+    ellipse(4, -22, 3, 3);
+
+    pop();
   }
-  
+
   collectItem(item) {
     let d = dist(this.x, this.y, item.x, item.y);
     return d < this.size / 2 + item.size / 2;
   }
-  
+
   collidesWith(obstacle) {
-    let d = dist(this.x, this.y, obstacle.x, obstacle.y);
-    return d < this.size / 2 + obstacle.size / 2;
+    return (
+      this.x + this.size / 2 > obstacle.x &&
+      this.x - this.size / 2 < obstacle.x + obstacle.w &&
+      this.y + this.size / 2 > obstacle.y &&
+      this.y - this.size / 2 < obstacle.y + obstacle.h
+    );
   }
 }
 
@@ -171,24 +207,47 @@ class Item {
     this.y = y;
     this.size = 20;
   }
-  
+
   display() {
-    fill(0, 255, 0);
     noStroke();
-    ellipse(this.x, this.y, this.size, this.size);
+    fill(144, 238, 144); // verde-pêra
+
+    // Corpo da pêra
+    ellipse(this.x, this.y + 4, this.size * 0.9, this.size * 1.2);
+
+    // Cabinho
+    stroke(101, 67, 33); // marrom
+    strokeWeight(2);
+    line(this.x, this.y - 8, this.x, this.y - 2);
   }
 }
 
 class Obstacle {
-  constructor(x, y) {
+  constructor(x, y, w, h) {
     this.x = x;
     this.y = y;
-    this.size = 40;
+    this.w = w;
+    this.h = h;
   }
-  
+
   display() {
-    fill(0);
+    fill(60);
+    stroke(40);
+    rect(this.x, this.y, this.w, this.h);
+
+    let cols = 3;
+    let rows = floor(this.h / 20);
+    let windowW = 8;
+    let windowH = 10;
+    fill(255, 255, 100);
     noStroke();
-    rect(this.x, this.y, this.size, this.size);
+
+    for (let i = 0; i < cols; i++) {
+      for (let j = 0; j < rows; j++) {
+        let wx = this.x + 8 + i * (this.w - 16) / (cols - 1) - windowW / 2;
+        let wy = this.y + 10 + j * 20;
+        rect(wx, wy, windowW, windowH);
+      }
+    }
   }
 }
